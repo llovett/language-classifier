@@ -60,7 +60,7 @@ def guess_language(document):
     '''Returns the most likely language for the given <document>'''
     language_probabilities = [(l,lang_prob(document,l)) for l in LANGUAGES]
     return reduce(lambda x,y:x if x[1]>y[1] else y, language_probabilities)[0]
-    
+
 def main():
     if len(argv) < 3:
         print "USAGE: python classifier.py <training set dir> <test set dir>"
@@ -69,7 +69,10 @@ def main():
     traindir = argv[1]
     testdir = argv[2]
 
-    # Go through each training set file and build knowledge base
+    #########
+    # TRAIN #
+    #########
+
     global All_docs_count, P_eng, P_spn, P_jap
     for language in LANGUAGES:
         dirname = os.path.join(traindir,language)
@@ -92,19 +95,6 @@ def main():
         lang_db = DB[language]
         lang_db['lang_prob'] = log(lang_db['document_count'])-log(float(All_docs_count))
 
-    # # Print database (for debugging)
-    # pprint(DB)
-
-    # Go through test set, print out suspect language for each
-    def print_result(filename, lang):
-        print "{}{}".format(filename+":", lang)
-    for language in LANGUAGES:
-        dirname = os.path.join(testdir,language)
-        for ifname in os.listdir(dirname):
-            with open(os.path.join(dirname,ifname),"r") as inputfile:
-                contents = inputfile.read()
-                print_result(ifname,guess_language(contents))
-
     #################
     # PRINT RESULTS #
     #################
@@ -120,5 +110,32 @@ def main():
         for c in string.lowercase:
             print "{:>5} {}".format(c, exp(char_prob(c,language)))
 
+    # Print the "confusion matrix"
+    confusion = [[0, 0, 0],[0, 0, 0],[0, 0, 0]]
+    # Iterate column, language
+    for i,lang in enumerate(LANGUAGES):
+        dirname = os.path.join(testdir,lang)
+        # Language guesses for language test set
+        guesses = []
+        for ifname in os.listdir(dirname):
+            with open(os.path.join(dirname,ifname),"r") as inputfile:
+                guesses.append(guess_language(inputfile.read()))
+        # Store guess information in confusion matrix
+        for j,lang_guess in enumerate(LANGUAGES):
+            confusion[j][i] = len([g for g in guesses if g == lang_guess])
+
+    # Row header
+    print "#"
+    print "# CONFUSION MATRIX"
+    print "#"
+    print 10*" ",
+    print ("{:>10}"*len(LANGUAGES)).format(*[l.upper() for l in LANGUAGES])
+    # Print each entry
+    for row,lang in enumerate(LANGUAGES):
+        print "{:>8}".format(lang.upper()),
+        for col in confusion[row]:
+            print "{:>10}".format(col),
+        print
+    
 if __name__ == '__main__':
     main()
