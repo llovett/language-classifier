@@ -46,15 +46,21 @@ def char_index(c):
 
 def char_prob(char, lang):
     '''Returns the log probability of the <char> appearing in the <lang>'''
-    return log(float(DB[lang][char_index(char)])) - log(float(DB[lang]['all_chars']))
+    # Handle special case of char never appearing in the language
+    lang_db = DB[lang]
+    if lang_db['char_counts'][char_index(char)] == 0:
+        return 0
+    return (log(float(DB[lang]['char_counts'][char_index(char)])) -
+            log(float(DB[lang]['all_chars'])))
 
 def lang_prob(document, lang):
     '''Returns the log probability of the <document> being in <lang>'''
-    return sum( (char_prob(c) for c in document) )
+    return sum( (char_prob(c,lang) for c in document if c.isalpha()) )
 
-def language(document):
+def guess_language(document):
     '''Returns the most likely language for the given <document>'''
-    return max((lang_prob(document, lang) for lang in LANGUAGES))
+    language_probabilities = [(l,lang_prob(document,l)) for l in LANGUAGES]
+    return reduce(lambda x,y:x if x[1]>y[1] else y, language_probabilities)[0]
     
 def main():
     if len(argv) < 3:
@@ -88,7 +94,18 @@ def main():
     P_spn = log(DB['Spanish']['document_count']) - log(float(All_docs_count))
     P_jap = log(DB['Japanese']['document_count']) - log(float(All_docs_count))
 
+    # Print database (for debugging)
     pprint(DB)
+
+    # Go through test set, print out suspect language for each
+    def print_result(filename, lang):
+        print "{}{}".format(filename+":", lang)
+    for language in LANGUAGES:
+        dirname = os.path.join(testdir,language)
+        for ifname in os.listdir(dirname):
+            with open(os.path.join(dirname,ifname),"r") as inputfile:
+                contents = inputfile.read()
+                print_result(ifname,guess_language(contents))
 
 if __name__ == '__main__':
     main()
