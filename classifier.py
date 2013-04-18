@@ -7,9 +7,8 @@
 # Last Modified: Wed Apr 17 20:38:42 EDT 2013
 
 from sys import argv
-from math import log
-import os
-from pprint import pprint
+from math import log, exp
+import os, string
 
 # Languages
 LANGUAGES = ('English','Spanish','Japanese')
@@ -18,28 +17,27 @@ DB = {
     'English':
         {
         'document_count':0,
-        'char_counts':[0]*26,
-        'all_chars':0
+        'char_counts':[0]*len(string.lowercase),
+        'all_chars':0,
+        'lang_prob':0
         },
     'Spanish':
         {
         'document_count':0,
-        'char_counts':[0]*26,
-        'all_chars':0
+        'char_counts':[0]*len(string.lowercase),
+        'all_chars':0,
+        'lang_prob':0
         },
     'Japanese':
         {
         'document_count':0,
-        'char_counts':[0]*26,
-        'all_chars':0
+        'char_counts':[0]*len(string.lowercase),
+        'all_chars':0,
+        'lang_prob':0
         }
 }
 # Count of all documents examined
 All_docs_count = 0
-# Language document probabilities
-P_eng = 0
-P_spn = 0
-P_jap = 0
 
 def char_index(c):
     return ord(c.lower())-ord('a')
@@ -49,14 +47,14 @@ def char_prob(char, lang):
     # Handle special case of char never appearing in the language
     lang_db = DB[lang]
     if lang_db['char_counts'][char_index(char)] == 0:
-        return 0
+        return float('-inf')
     return (log(float(DB[lang]['char_counts'][char_index(char)])) -
             log(float(DB[lang]['all_chars'])))
 
 def lang_prob(document, lang):
     '''Returns the log probability of the <document> being in <lang>'''
-    P_l = P_eng if lang == 'English' else P_spn if lang == 'Spanish' else P_jap
-    return sum( (char_prob(c,lang) for c in document if c.isalpha()) ) + P_l
+    return (sum( (char_prob(c,lang) for c in document if c.isalpha()) ) +
+            DB[lang]['lang_prob'])
 
 def guess_language(document):
     '''Returns the most likely language for the given <document>'''
@@ -75,9 +73,9 @@ def main():
     global All_docs_count, P_eng, P_spn, P_jap
     for language in LANGUAGES:
         dirname = os.path.join(traindir,language)
+        lang_db = DB[language]
         for ifname in os.listdir(dirname):
             # Increment count for document in current language
-            lang_db = DB[language]
             lang_db['document_count'] += 1
             # Increment global document count
             All_docs_count += 1
@@ -90,13 +88,12 @@ def main():
                         # Increment all character count for this language
                         lang_db['all_chars'] += 1
 
-    # Set other data
-    P_eng = log(DB['English']['document_count']) - log(float(All_docs_count))
-    P_spn = log(DB['Spanish']['document_count']) - log(float(All_docs_count))
-    P_jap = log(DB['Japanese']['document_count']) - log(float(All_docs_count))
+    for language in LANGUAGES:
+        lang_db = DB[language]
+        lang_db['lang_prob'] = log(lang_db['document_count'])-log(float(All_docs_count))
 
-    # Print database (for debugging)
-    pprint(DB)
+    # # Print database (for debugging)
+    # pprint(DB)
 
     # Go through test set, print out suspect language for each
     def print_result(filename, lang):
@@ -107,6 +104,21 @@ def main():
             with open(os.path.join(dirname,ifname),"r") as inputfile:
                 contents = inputfile.read()
                 print_result(ifname,guess_language(contents))
+
+    #################
+    # PRINT RESULTS #
+    #################
+
+    # Language probabilities, character probabilities
+    for language in LANGUAGES:
+        lang_db = DB[language]
+        print "#"
+        print "# {}".format(language.upper())
+        print "#"
+        print "Probability: {}".format(exp(lang_db['lang_prob']))
+        print "Character probabilities:"
+        for c in string.lowercase:
+            print "{:>5} {}".format(c, exp(char_prob(c,language)))
 
 if __name__ == '__main__':
     main()
