@@ -73,7 +73,7 @@ def main():
     # TRAIN #
     #########
 
-    global All_docs_count, P_eng, P_spn, P_jap
+    global All_docs_count
     for language in LANGUAGES:
         dirname = os.path.join(traindir,language)
         lang_db = DB[language]
