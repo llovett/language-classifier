@@ -55,7 +55,8 @@ def char_prob(char, lang):
 
 def lang_prob(document, lang):
     '''Returns the log probability of the <document> being in <lang>'''
-    return sum( (char_prob(c,lang) for c in document if c.isalpha()) )
+    P_l = P_eng if lang == 'English' else P_spn if lang == 'Spanish' else P_jap
+    return sum( (char_prob(c,lang) for c in document if c.isalpha()) ) + P_l
 
 def guess_language(document):
     '''Returns the most likely language for the given <document>'''
